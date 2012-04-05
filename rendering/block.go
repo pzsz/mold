@@ -14,7 +14,7 @@ type VoxelsBlockMesh struct {
 	Dirty     bool
 }
 
-func (s *VoxelsBlockMesh) UpdateMesh(vox_storage voxels.VoxelsStorage) {
+func (s *VoxelsBlockMesh) UpdateMesh(vox_storage voxels.VoxelField) {
 	var builder *glutils.MeshBuilder
 	if s.Mesh != nil {
 		builder = glutils.ReuseMeshBuilder(s.Mesh)
@@ -33,7 +33,7 @@ type VoxelsRendererConfig struct {
 }
 
 type VoxelsRenderer struct {
-	storage       voxels.VoxelsStorage
+	storage       voxels.VoxelField
 	blockArray    []VoxelsBlockMesh
 	blockStart    v.Vector3i 
 
@@ -41,7 +41,7 @@ type VoxelsRenderer struct {
 	config        VoxelsRendererConfig
 }
 
-func NewVoxelsRenderer(storage voxels.VoxelsStorage, config VoxelsRendererConfig) *VoxelsRenderer {
+func NewVoxelsRenderer(storage voxels.VoxelField, config VoxelsRendererConfig) *VoxelsRenderer {
 	ret := &VoxelsRenderer{
 	storage: storage,
         config: config,

@@ -6,7 +6,7 @@ import (
 )
 
 // Make mesh from 'cube' range inside voxel storage
-func BuildMeshRange(vstore VoxelsStorage, start, end v.Vector3i, mesh MeshWriter) {
+func BuildMeshRange(vstore VoxelField, start, end v.Vector3i, mesh MeshWriter) {
 //	sizeX,sizeY,sizeZ := vstore.Size()
 
 	for z:=start.Z; z < end.Z;z++ {

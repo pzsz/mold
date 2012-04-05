@@ -12,7 +12,7 @@ import (
 type MCPlayAppState struct {
 	Manager   *glutils.AppStateManager
 	Camera    *glutils.Camera
-	Voxels    voxels.VoxelsStorage
+	Voxels    voxels.VoxelField
 	Renderer  *VoxelsRenderer
 
 	shader    *glutils.ShaderProgram
@@ -32,7 +32,7 @@ func (self *MCPlayAppState) Setup(manager *glutils.AppStateManager) {
 	self.Camera = glutils.NewCamera(glutils.GetViewport())
 	self.Camera.SetFrustrumProjection(60, 0.1, 100)
 
-	storage := voxels.CreateSimpleVoxelsStorage(1024, 1024, 128)
+	storage := voxels.CreateArrayVoxelField(1024, 1024, 128)
 	self.Voxels = storage
 	voxels.DrawSphere(storage, 6, 6, 0, 6, 250)
 	voxels.DrawSphere(storage, 20, 6, 0, 6, 180)
@@ -50,7 +50,7 @@ func (self *MCPlayAppState) Setup(manager *glutils.AppStateManager) {
 
 	self.Renderer = NewVoxelsRenderer(storage,
 		VoxelsRendererConfig{
-	            BlockArraySize: v.Vector3i{4,4,4},
+	            BlockArraySize: v.Vector3i{5,5,5},
                     BlockSize: v.Vector3i{8,8,8},
 	})
 
