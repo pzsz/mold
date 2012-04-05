@@ -6,6 +6,7 @@ import (
 	"github.com/pzsz/glutils"
 	v "github.com/pzsz/lin3dmath"
 	"github.com/pzsz/marchingcubes/voxels"
+
 )
 
 type MCPlayAppState struct {
@@ -34,7 +35,7 @@ func (self *MCPlayAppState) Setup(manager *glutils.AppStateManager) {
 	storage := voxels.CreateSimpleVoxelsStorage(1024, 1024, 128)
 	self.Voxels = storage
 	voxels.DrawSphere(storage, 6, 6, 0, 6, 250)
-	voxels.DrawSphere(storage, 12, 6, 0, 6, 180)
+	voxels.DrawSphere(storage, 20, 6, 0, 6, 180)
 
 	var err error
 	if self.shader, err = glutils.GetProgram(
@@ -49,11 +50,10 @@ func (self *MCPlayAppState) Setup(manager *glutils.AppStateManager) {
 
 	self.Renderer = NewVoxelsRenderer(storage,
 		VoxelsRendererConfig{
-	            BlockArraySize: v.Vector3i{1,1,1},
-                    BlockSize: v.Vector3i{64,64,64},
+	            BlockArraySize: v.Vector3i{4,4,4},
+                    BlockSize: v.Vector3i{8,8,8},
 	})
 
-	self.Renderer.CreateRangesArray()
 	self.Renderer.RefreshMesh()
 }
 
@@ -77,6 +77,8 @@ func (self *MCPlayAppState) Process(time_step float32) {
 	glutils.Clear()
 
 	self.pos.AddIP(self.moveDir.Mul(time_step))
+
+	self.Renderer.SetCenter(self.pos)
 
 	self.Camera.SetModelview(
 		self.pos.X, self.pos.Y, self.pos.Z+32,
@@ -110,10 +112,14 @@ func (self *MCPlayAppState) OnKeyDown(key *sdl.Keysym) {
 func (self *MCPlayAppState) OnKeyUp(key *sdl.Keysym) {
 	switch(key.Sym) {
 	case sdl.K_w:
+		self.moveDir.Y = 0
+		break
 	case sdl.K_s:
 		self.moveDir.Y = 0
 		break
 	case sdl.K_a:
+		self.moveDir.X = 0
+		break
 	case sdl.K_d:
 		self.moveDir.X = 0
 		break

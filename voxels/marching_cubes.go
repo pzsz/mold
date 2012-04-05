@@ -9,9 +9,9 @@ import (
 func BuildMeshRange(vstore VoxelsStorage, start, end v.Vector3i, mesh MeshWriter) {
 //	sizeX,sizeY,sizeZ := vstore.Size()
 
-	for z:=start.Z; z < end.Z-1;z++ {
-		for y:=start.Y; y < end.Y-1;y++ {
-			for x:=start.X;x < end.X-1;x++ {
+	for z:=start.Z; z < end.Z;z++ {
+		for y:=start.Y; y < end.Y;y++ {
+			for x:=start.X;x < end.X;x++ {
 				BuildMeshCube(&VoxelCube{vstore, v.Vector3i{x,y,z}}, mesh)
 			}
 		}
@@ -119,7 +119,7 @@ func BuildMeshCube(cube *VoxelCube, mesh MeshWriter) {
 }
 
 //   Linearly interpolate the position where an isosurface cuts
-//   an edge between two vertices, each with their own scalar value
+//   an edge between two vertices
 func VertexPositionInterp(cube *VoxelCube,a,b int) (p v.Vector3f) {
 	var mu float32 = 0
 	var valp1 int = cube.GetValue(a)
@@ -128,15 +128,15 @@ func VertexPositionInterp(cube *VoxelCube,a,b int) (p v.Vector3f) {
 	p2 := cube.GetPosition(b)
 
 	if ISOLEVEL-valp1 == 0 { 
-		p = p1.ToF()
+		p = p1.To3F()
 		return 
 	}
 	if ISOLEVEL-valp2 == 0 {
-		p = p2.ToF()
+		p = p2.To3F()
 		return
 	}
 	if math.Abs(float64(valp1-valp2)) < 2 {
-		p = p1.ToF()
+		p = p1.To3F()
 		return
 	}
 	mu = float32(ISOLEVEL - valp1) / float32(valp2 - valp1)
@@ -146,6 +146,8 @@ func VertexPositionInterp(cube *VoxelCube,a,b int) (p v.Vector3f) {
 	return 
 }
 
+//   Linearly interpolate the gradient obtained normals where an isosurface cuts
+//   an edge between two vertices
 func VertexNormalGradientInterp(cube *VoxelCube,a,b int) (v.Vector3f) {
 	var mu float32 = 0;
 	var valp1 int = int(cube.GetValue(a));
