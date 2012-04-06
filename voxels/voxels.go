@@ -97,69 +97,15 @@ func (self *VoxelCube) GetGradient(id int) (v.Vector3f) {
 	return GetVoxelGradient(self.VoxelField, pos)
 }
 
-type ArrayVoxelField struct {
-	sizeX, sizeY, sizeZ int;
-	data []byte;
-}
+func (s *VoxelCube) Interpolate(x, y, z float32) int {
+	bottom := float32(s.GetValue(0))*(1-x)*(1-y) +
+		float32(s.GetValue(1))*(x)*(1-y) +
+		float32(s.GetValue(2))*(x)*(y) +
+		float32(s.GetValue(3))*(1-x)*(y)
 
-func CreateArrayVoxelField(x,y,z int) (*ArrayVoxelField) {
-	return &ArrayVoxelField{
-	sizeX: x,
-	sizeY: y,
-	sizeZ: z,
-	data: make([]byte, x*y*z)}
-}
-
-func (self *ArrayVoxelField) Size() (int,int,int) {
-	return self.sizeX, self.sizeY, self.sizeZ;
-}
-
-func (self *ArrayVoxelField) GetValue(x,y,z int) (int) {
-	if x < 0 || y < 0 || z < 0 { return 0 }
-	if x >= self.sizeX || y >= self.sizeY || z >= self.sizeZ { return 0 }
-
-	return int(self.data[x + y * self.sizeX + z * self.sizeX*self.sizeY]);
-}
-
-func (self *ArrayVoxelField) AddValue(from, to v.Vector3i, eval VoxelFunc) {
-	for z:=from.Z; z < to.Z; z++ {
-		for y:=from.Y; y < to.Y; y++ {
-			for x:=from.X; x < to.X; x++ {
-				if x < 0 || y < 0 || z < 0 || x >= self.sizeX || y >= self.sizeY || z >= self.sizeZ { 
-					continue
-				}
-
-				id := x + y * self.sizeX + z * self.sizeX*self.sizeY
-				v := int(self.data[id]) + eval(x,y,z)
-
-				if v < 0 { 
-					v = 0
-				} else if v > 255 {
-					v = 255
-				}
-				self.data[id] = byte(v)				
-			}
-		}
-	}
-}
-
-func (self *ArrayVoxelField) SetValue(from, to v.Vector3i, eval VoxelFunc) {
-	for z:=from.Z; z < to.Z; z++ {
-		for y:=from.Y; y < to.Y; y++ {
-			for x:=from.X; x < to.X; x++ {				
-				if x < 0 || y < 0 || z < 0 || x >= self.sizeX || y >= self.sizeY || z >= self.sizeZ { 
-					continue
-				}
-
-				id := x + y * self.sizeX + z * self.sizeX*self.sizeY
-				v := eval(x,y,z)
-				if v < 0 { 
-					v = 0
-				} else if v > 255 {
-					v = 255
-				}
-				self.data[id] = byte(v)				
-			}
-		}
-	}
+	top := float32(s.GetValue(4))*(1-x)*(1-y) +
+		float32(s.GetValue(5))*(x)*(1-y) +
+		float32(s.GetValue(6))*(x)*(y) +
+		float32(s.GetValue(7))*(1-x)*(y)
+	return int(bottom*z+top*(1-z))
 }

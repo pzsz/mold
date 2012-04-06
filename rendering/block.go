@@ -33,18 +33,20 @@ type VoxelsRendererConfig struct {
 }
 
 type VoxelsRenderer struct {
-	storage       voxels.VoxelField
+	voxelField    *voxels.DamageWrapper
 	blockArray    []VoxelsBlockMesh
 	blockStart    v.Vector3i 
-
 
 	config        VoxelsRendererConfig
 }
 
-func NewVoxelsRenderer(storage voxels.VoxelField, config VoxelsRendererConfig) *VoxelsRenderer {
+func NewVoxelsRenderer(voxelField *voxels.DamageWrapper, config VoxelsRendererConfig) *VoxelsRenderer {
 	ret := &VoxelsRenderer{
-	storage: storage,
+	voxelField: voxelField,
         config: config,
+	}
+	ret.voxelField.DamageFunc = func(b v.Box3i) {
+		ret.UpdateArea(b)
 	}
 	ret.newRangesArray()
 	
@@ -65,25 +67,26 @@ func (s *VoxelsRenderer) UpdatePoint(point v.Vector3i) {
 	s.blockArray[id].Dirty = true
 }
 
-func (s *VoxelsRenderer) UpdateLargeArea(damage v.Box3i) {
-	block_start := damage.Start.Div3I(s.config.BlockSize)
-	block_end := damage.End.Div3I(s.config.BlockSize)
+func (s *VoxelsRenderer) UpdateArea(damage v.Box3i) {
+	block_start := damage.Start.Div3I(s.config.BlockSize).Sub(s.blockStart)
+	block_end := damage.End.Div3I(s.config.BlockSize).Sub(s.blockStart)
 
-	block_damage := v.Box3i{block_start, block_end}
-	render_cube := v.Box3i{s.blockStart, s.blockStart.Add(s.config.BlockArraySize)}
+	updamage := v.Box3i{block_start, block_end}
 
 	baSize := s.config.BlockArraySize
-	found, updamage := block_damage.Intersection(render_cube)
-	if !found {
-		return
-	}
-	for z := updamage.Start.Z; z<updamage.End.Z; z++ {
-	for y := updamage.Start.Y; z<updamage.End.Y; y++ {
-	for x := updamage.Start.X; z<updamage.End.X; x++ {
-		id :=x + y*baSize.X + z*baSize.X*baSize.Y
-		s.blockArray[id].Dirty = true
-	}
-	}
+
+	for z := updamage.Start.Z; z<=updamage.End.Z; z++ {
+		for y := updamage.Start.Y; y<=updamage.End.Y; y++ {
+			for x := updamage.Start.X; x<=updamage.End.X; x++ {
+				if x < 0 || x >= baSize.X ||
+					y < 0 || y >= baSize.Y ||
+					z < 0 || z >= baSize.Z {
+					continue
+				}
+				id :=x + y*baSize.X + z*baSize.X*baSize.Y
+				s.blockArray[id].Dirty = true
+			}
+		}
 	}
 }
 
@@ -181,7 +184,7 @@ func (s *VoxelsRenderer) RefreshMesh() {
 		mesh_builder := glutils.ReuseMeshBuilder(block.Mesh)
 
 		voxels.BuildMeshRange(
-			s.storage, 
+			s.voxelField, 
 			block.Position,
 			block.Position.Add(block.Size),
 			mesh_builder)
@@ -192,6 +195,7 @@ func (s *VoxelsRenderer) RefreshMesh() {
 			block.Mesh.Destroy()
 			block.Mesh = nil
 		}
+		block.Dirty = false
 	}
 }
 

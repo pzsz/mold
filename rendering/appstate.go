@@ -6,7 +6,7 @@ import (
 	"github.com/pzsz/glutils"
 	v "github.com/pzsz/lin3dmath"
 	"github.com/pzsz/marchingcubes/voxels"
-
+	"fmt"
 )
 
 type MCPlayAppState struct {
@@ -32,10 +32,8 @@ func (self *MCPlayAppState) Setup(manager *glutils.AppStateManager) {
 	self.Camera = glutils.NewCamera(glutils.GetViewport())
 	self.Camera.SetFrustrumProjection(60, 0.1, 100)
 
-	storage := voxels.CreateArrayVoxelField(1024, 1024, 128)
+	storage := voxels.NewDamageWrapper(voxels.CreateArrayVoxelField(1024, 1024, 128), nil)
 	self.Voxels = storage
-	voxels.DrawSphere(storage, 6, 6, 0, 6, 250)
-	voxels.DrawSphere(storage, 20, 6, 0, 6, 180)
 
 	var err error
 	if self.shader, err = glutils.GetProgram(
@@ -54,6 +52,10 @@ func (self *MCPlayAppState) Setup(manager *glutils.AppStateManager) {
                     BlockSize: v.Vector3i{8,8,8},
 	})
 
+	voxels.DrawSphere(storage, 6, 6, 0, 6, 250)
+	voxels.DrawSphere(storage, 20, 6, 0, 6, 180)
+
+	fmt.Printf("aa")
 	self.Renderer.RefreshMesh()
 }
 
