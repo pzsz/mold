@@ -26,3 +26,16 @@ func DrawSphere(store VoxelField, x,y,z float32, radius float32, power int) {
 	store.AddValue(v.Vector3i{startX, startY, startZ},
 		v.Vector3i{endX, endY, endZ}, op)
 }
+
+func DrawGround(store VoxelField, level int) {
+	sizeCube := store.Size()
+	
+	op := func (ix,iy,iz int) int {
+		if iy < level {
+			return 255
+		}
+		return 0
+	}
+
+	store.AddValue(sizeCube.Start, sizeCube.End, op)
+}

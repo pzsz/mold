@@ -12,6 +12,7 @@ import (
 type MCPlayAppState struct {
 	Manager   *glutils.AppStateManager
 	Camera    *glutils.Camera
+	Controller *glutils.FpsController
 	Voxels    voxels.VoxelField
 	Renderer  *VoxelsRenderer
 
@@ -20,6 +21,8 @@ type MCPlayAppState struct {
 
 	pos       v.Vector3f
 	moveDir   v.Vector3f
+
+	lastX, lastY  float32    
 }
 
 func NewMCPlayAppState() *MCPlayAppState {
@@ -30,9 +33,15 @@ func (self *MCPlayAppState) Setup(manager *glutils.AppStateManager) {
 	self.Manager = manager
 
 	self.Camera = glutils.NewCamera(glutils.GetViewport())
+
+	self.Controller = glutils.NewFpsController(self.Camera)
+	self.Controller.Pos = v.Vector3f{0, 0, -30}
 	self.Camera.SetFrustrumProjection(60, 0.1, 100)
 
-	storage := voxels.NewDamageWrapper(voxels.CreateArrayVoxelField(1024, 1024, 128), nil)
+	storage := voxels.NewDamageWrapper(voxels.CreateArrayVoxelField(
+		1024, 128, 1024,
+		-512, -64, -512), nil)
+
 	self.Voxels = storage
 
 	var err error
@@ -48,14 +57,16 @@ func (self *MCPlayAppState) Setup(manager *glutils.AppStateManager) {
 
 	self.Renderer = NewVoxelsRenderer(storage,
 		VoxelsRendererConfig{
-	            BlockArraySize: v.Vector3i{5,5,5},
+	            BlockArraySize: v.Vector3i{20,8,20},
                     BlockSize: v.Vector3i{8,8,8},
 	})
 
-	voxels.DrawSphere(storage, 6, 6, 0, 6, 250)
-	voxels.DrawSphere(storage, 20, 6, 0, 6, 180)
+	voxels.DrawGround(storage, -5)
 
-	fmt.Printf("aa")
+	voxels.DrawSphere(storage, 0, 0, 0, 6, 250)
+
+	voxels.DrawSphere(storage, 10, 0, 0, 6, 250)
+
 	self.Renderer.RefreshMesh()
 }
 
@@ -78,14 +89,12 @@ func (self *MCPlayAppState) Resume() {
 func (self *MCPlayAppState) Process(time_step float32) {
 	glutils.Clear()
 
-	self.pos.AddIP(self.moveDir.Mul(time_step))
+	self.Controller.MoveBy(self.moveDir.Y * time_step, 
+		self.moveDir.X * time_step)
 
-	self.Renderer.SetCenter(self.pos)
+	self.Renderer.SetCenter(self.Controller.Pos)
 
-	self.Camera.SetModelview(
-		self.pos.X, self.pos.Y, self.pos.Z+32,
-		self.pos.X, self.pos.Y, self.pos.Z,
-		0, 1, 0)
+	self.Controller.SetupCamera()
 
 	self.Renderer.Render(self.Camera, 
 		self.shader,
@@ -128,13 +137,26 @@ func (self *MCPlayAppState) OnKeyUp(key *sdl.Keysym) {
 	}
 }
 
-func (self *MCPlayAppState) OnMouseMove(x, y float32) {
+func (self *MCPlayAppState) OnMouseMove(x, y float32) {	
+	dx := self.lastX - x 
+	dy := self.lastY - y
+
+	if dx < 50 && dx > -50 && dy < 50 && dy > -50 {
+		self.Controller.RotateBy(dx * -0.005, dy * -0.005)
+	}
+
+	self.lastX = x 
+	self.lastY = y
 
 }
 
 func (self *MCPlayAppState) OnMouseClick(x, y float32, button int, down bool) {
 	mpos := self.Camera.ScreenToPlaneXY(x, y, 0)
+
+	fmt.Printf("%v\n", mpos)
 	voxels.DrawSphere(self.Voxels, mpos.X, mpos.Y, 0, 6, 100)
+	
+	//voxels.DrawSphere(self.Voxels, 0, 0, 0, 6, 100)
 	self.Renderer.RefreshMesh()
 }
 

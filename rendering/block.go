@@ -36,6 +36,8 @@ type VoxelsRenderer struct {
 	voxelField    *voxels.DamageWrapper
 	blockArray    []VoxelsBlockMesh
 	blockStart    v.Vector3i 
+	
+	renderSize    v.Vector3i
 
 	config        VoxelsRendererConfig
 }
@@ -44,8 +46,10 @@ func NewVoxelsRenderer(voxelField *voxels.DamageWrapper, config VoxelsRendererCo
 	ret := &VoxelsRenderer{
 	voxelField: voxelField,
         config: config,
+	renderSize: config.BlockArraySize.Mul3I(config.BlockSize),
 	}
-	ret.voxelField.DamageFunc = func(b v.Box3i) {
+
+	ret.voxelField.DamageFunc = func(b v.Boxi) {
 		ret.UpdateArea(b)
 	}
 	ret.newRangesArray()
@@ -67,11 +71,15 @@ func (s *VoxelsRenderer) UpdatePoint(point v.Vector3i) {
 	s.blockArray[id].Dirty = true
 }
 
-func (s *VoxelsRenderer) UpdateArea(damage v.Box3i) {
-	block_start := damage.Start.Div3I(s.config.BlockSize).Sub(s.blockStart)
-	block_end := damage.End.Div3I(s.config.BlockSize).Sub(s.blockStart)
+func (s *VoxelsRenderer) UpdateArea(damage v.Boxi) {
+//	block_start := damage.Start.Div3I(s.config.BlockSize).Sub(s.blockStart)
+//	block_end := damage.End.Div3I(s.config.BlockSize).Sub(s.blockStart)
 
-	updamage := v.Box3i{block_start, block_end}
+	damage = damage.GrowBy(1)
+	block_start := damage.Start.Sub(s.blockStart.Mul3I(s.config.BlockSize)).Div3I(s.config.BlockSize)
+	block_end := damage.End.Sub(s.blockStart.Mul3I(s.config.BlockSize)).Div3I(s.config.BlockSize)
+
+	updamage := v.Boxi{block_start, block_end}
 
 	baSize := s.config.BlockArraySize
 

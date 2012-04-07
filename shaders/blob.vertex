@@ -4,7 +4,7 @@ varying vec3 vertex_light_direction;
 varying vec3 vertex_normal;
 
 void main() {     
-    vertex_normal = normalize(gl_NormalMatrix * gl_Normal);
+    vertex_normal = normalize(gl_Normal);
 
     // Calculate the light position for this vertex
     vertex_light_direction = normalize(light0_direction.xyz);
