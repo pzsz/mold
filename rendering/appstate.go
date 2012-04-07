@@ -23,6 +23,8 @@ type MCPlayAppState struct {
 	moveDir   v.Vector3f
 
 	lastX, lastY  float32    
+
+	frameStats glutils.FrameStats
 }
 
 func NewMCPlayAppState() *MCPlayAppState {
@@ -101,6 +103,10 @@ func (self *MCPlayAppState) Process(time_step float32) {
 		self.bindFunc)
 
 	sdl.GL_SwapBuffers()
+
+	if self.frameStats.FrameFinished(int64(time_step * 1000)) {
+		fmt.Printf("%v\n", &self.frameStats)
+	}
 }
 
 func (self *MCPlayAppState) OnKeyDown(key *sdl.Keysym) {
