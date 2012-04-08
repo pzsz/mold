@@ -159,8 +159,12 @@ func (self *MCPlayAppState) OnMouseMove(x, y float32) {
 }
 
 func (self *MCPlayAppState) OnMouseClick(x, y float32, button int, down bool) {
-	mpos := self.Camera.ScreenToSphere(x,y, 10)
+//	mpos := self.Camera.ScreenToSphere(x,y, 10)
 	//mpos := self.Camera.ScreenToPlaneXY(x, y, 0)
+	vvector := self.Controller.GetViewVector().Mul(10)
+	mpos := self.Controller.Pos.Add(vvector)
+
+	fmt.Printf("%v %v\n", mpos, vvector)
 
 //	voxels.DrawSphere(self.Voxels, mpos.X, mpos.Y, 0, 6, 100)
 	voxels.DrawSphere(self.Voxels, mpos.X, mpos.Y, mpos.Z, 4, 100)
