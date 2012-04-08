@@ -54,22 +54,24 @@ func (self *MCPlayAppState) Setup(manager *glutils.AppStateManager) {
 	}
 
 	self.bindFunc = func(prog *glutils.ShaderProgram) {
-		prog.GetUniform("light0_direction").Uniform3f(1, 1, -1)
+		prog.GetUniform("light0_direction").Uniform3f(1, -1, -1)
 	}
 
 	self.Renderer = NewVoxelsRenderer(storage,
 		VoxelsRendererConfig{
-	            BlockArraySize: v.Vector3i{20,8,20},
+	            BlockArraySize: v.Vector3i{32,8,32},
                     BlockSize: v.Vector3i{8,8,8},
 	})
 
-	voxels.DrawGround(storage, -5)
+	voxels.DrawWave(storage)
 
 	voxels.DrawSphere(storage, 0, 0, 0, 6, 250)
 
 	voxels.DrawSphere(storage, 10, 0, 0, 6, 250)
 
 	self.Renderer.RefreshMesh()
+
+	sdl.ShowCursor(0)
 }
 
 func (self *MCPlayAppState) OnViewportResize(x, y float32) {
@@ -157,10 +159,11 @@ func (self *MCPlayAppState) OnMouseMove(x, y float32) {
 }
 
 func (self *MCPlayAppState) OnMouseClick(x, y float32, button int, down bool) {
-	mpos := self.Camera.ScreenToPlaneXY(x, y, 0)
+	mpos := self.Camera.ScreenToSphere(x,y, 10)
+	//mpos := self.Camera.ScreenToPlaneXY(x, y, 0)
 
-	fmt.Printf("%v\n", mpos)
-	voxels.DrawSphere(self.Voxels, mpos.X, mpos.Y, 0, 6, 100)
+//	voxels.DrawSphere(self.Voxels, mpos.X, mpos.Y, 0, 6, 100)
+	voxels.DrawSphere(self.Voxels, mpos.X, mpos.Y, mpos.Z, 4, 100)
 	
 	//voxels.DrawSphere(self.Voxels, 0, 0, 0, 6, 100)
 	self.Renderer.RefreshMesh()

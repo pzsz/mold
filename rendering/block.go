@@ -7,24 +7,19 @@ import (
 	"fmt"
 	)
 
+type VBMState int
+
+const (
+	VBM_DIRTY    = VBMState(0)
+	VBM_BUILDING = VBMState(1)
+	VBM_OK       = VBMState(2)
+)
+
 type VoxelsBlockMesh struct {
 	Mesh      *glutils.MeshBuffer
 	Position  v.Vector3i
 	Size      v.Vector3i
-	Dirty     bool
-}
-
-func (s *VoxelsBlockMesh) UpdateMesh(vox_storage voxels.VoxelField) {
-	var builder *glutils.MeshBuilder
-	if s.Mesh != nil {
-		builder = glutils.ReuseMeshBuilder(s.Mesh)
-	} else {
-		builder = glutils.NewMeshBuilder(0, 0, glutils.RENDER_POLYGONS, 
-			glutils.BUF_NORMAL | glutils.BUF_COLOUR, true)
-	}
-	
-	voxels.BuildMeshRange(vox_storage, s.Position, s.Position.Add(s.Size),
-		builder)	
+	State     VBMState
 }
 
 type VoxelsRendererConfig struct {
@@ -32,14 +27,23 @@ type VoxelsRendererConfig struct {
 	BlockSize       v.Vector3i
 }
 
+type VBMUpdate struct {
+	BlockGen         int
+	Mesh             *glutils.MeshBuffer
+	WorldPos          v.Vector3i
+}
+
 type VoxelsRenderer struct {
 	voxelField    *voxels.DamageWrapper
 	blockArray    []VoxelsBlockMesh
 	blockStart    v.Vector3i 
+	blockArrayGen int
 	
 	renderSize    v.Vector3i
 
 	config        VoxelsRendererConfig
+	
+	updateChannel chan VBMUpdate
 }
 
 func NewVoxelsRenderer(voxelField *voxels.DamageWrapper, config VoxelsRendererConfig) *VoxelsRenderer {
@@ -47,6 +51,7 @@ func NewVoxelsRenderer(voxelField *voxels.DamageWrapper, config VoxelsRendererCo
 	voxelField: voxelField,
         config: config,
 	renderSize: config.BlockArraySize.Mul3I(config.BlockSize),
+	updateChannel: make(chan VBMUpdate, 100),
 	}
 
 	ret.voxelField.DamageFunc = func(b v.Boxi) {
@@ -68,7 +73,7 @@ func (s *VoxelsRenderer) UpdatePoint(point v.Vector3i) {
 		return
 	}
 	id :=b.X + b.Y*baSize.X + b.Z*baSize.X*baSize.Y	
-	s.blockArray[id].Dirty = true
+	s.blockArray[id].State = VBM_DIRTY
 }
 
 func (s *VoxelsRenderer) UpdateArea(damage v.Boxi) {
@@ -92,7 +97,7 @@ func (s *VoxelsRenderer) UpdateArea(damage v.Boxi) {
 					continue
 				}
 				id :=x + y*baSize.X + z*baSize.X*baSize.Y
-				s.blockArray[id].Dirty = true
+				s.blockArray[id].State = VBM_DIRTY
 			}
 		}
 	}
@@ -123,18 +128,21 @@ func (s *VoxelsRenderer) newRangesArray() {
 
 	s.blockArray = make([]VoxelsBlockMesh, array_size)
 	for id, _ := range s.blockArray {
-		block := &s.blockArray[id]
-
-		block.Size = s.config.BlockSize
-		block.Position = s.blockStart.Mul3I(s.config.BlockSize)
-		
 		z := id / (size.X*size.Y)
 		xy := (id-size.X*size.Y*z)
 		y := xy / size.X
 		x := xy % size.X
 
-		block.Position.AddIP(v.Vector3i{x, y, z}.Mul3I(s.config.BlockSize))
-		block.Dirty = true
+		pos := s.blockStart.Mul3I(s.config.BlockSize)
+		pos.AddIP(v.Vector3i{x, y, z}.Mul3I(s.config.BlockSize))
+
+		s.blockArray[id] = s.newVBM(pos)
+	}
+}
+
+func (s *VoxelsRenderer) newVBM(position v.Vector3i) VoxelsBlockMesh {
+	return VoxelsBlockMesh{Position: position,
+	Size: s.config.BlockSize,
 	}
 }
 
@@ -160,55 +168,97 @@ func (s *VoxelsRenderer) translateBlockArray(tx, ty, tz int) {
 					oid := ox + oy*size.X + oz*size.X*size.Y
 					newBlockArray[id] = s.blockArray[oid]
 				} else {
-					block := &newBlockArray[id]
-					block.Size = s.config.BlockSize
-					block.Position = s.blockStart.Mul3I(s.config.BlockSize)
-					block.Position.AddIP(v.Vector3i{x, y, z}.Mul3I(s.config.BlockSize))
-					block.Dirty = true
+					pos := s.blockStart.Mul3I(s.config.BlockSize)
+					pos.AddIP(v.Vector3i{x, y, z}.Mul3I(s.config.BlockSize))
+					newBlockArray[id] = s.newVBM(pos)
 				}
 			}
 		}	
 	}	
 
 	s.blockArray = newBlockArray
+	s.blockArrayGen+=1
 }
 
-
+// Regenerate meshes of block
 func (s *VoxelsRenderer) RefreshMesh() {
+	blockArrayGeneration := s.blockArrayGen
+
 	for id, _ := range s.blockArray {
 		block := &s.blockArray[id]
-		if !block.Dirty {
-			continue
-		}
 
-		if block.Mesh == nil {
-			block.Mesh = glutils.NewMeshBuffer(
-				0, 0, 
-				glutils.RENDER_POLYGONS,
-				glutils.BUF_NORMAL)
-			block.Mesh.AllocBuffers()
-		}
-
-		mesh_builder := glutils.ReuseMeshBuilder(block.Mesh)
-
-		voxels.BuildMeshRange(
-			s.voxelField, 
-			block.Position,
-			block.Position.Add(block.Size),
-			mesh_builder)
-
-		if !mesh_builder.IsEmpty() {
-			block.Mesh = mesh_builder.Finalize()
-		} else {
-			block.Mesh.Destroy()
+		switch block.State {
+		case VBM_DIRTY:
+			mesh := block.Mesh 
 			block.Mesh = nil
+
+			if mesh == nil {
+				mesh = glutils.NewMeshBuffer(
+					0, 0, glutils.RENDER_POLYGONS, glutils.BUF_NORMAL)
+			}
+
+			go func() {
+				mesh_builder := glutils.ReuseMeshBuilder(mesh)
+
+				voxels.BuildMeshRange(
+					s.voxelField, 
+					block.Position,
+					block.Position.Add(block.Size),
+					mesh_builder)
+
+				if !mesh_builder.IsEmpty() {
+					s.updateChannel <- VBMUpdate{
+						blockArrayGeneration,
+						mesh_builder.Finalize(false),
+						block.Position}
+				} else {
+					mesh.Destroy()
+					s.updateChannel <- VBMUpdate{
+						blockArrayGeneration,
+						nil,
+						block.Position}
+				}
+			}()
+			block.State = VBM_BUILDING
+			break
 		}
-		block.Dirty = false
+	}
+}
+
+func (s *VoxelsRenderer) Process() {
+	baSize := s.config.BlockArraySize
+	for {
+		select {
+		case update := <-s.updateChannel:
+			b := update.WorldPos.Div3I(s.config.BlockSize).Sub(s.blockStart)
+
+			if b.X < 0 || b.X >= baSize.X ||
+				b.Y < 0 || b.Y >= baSize.Y ||
+				b.Z < 0 || b.Z >= baSize.Z {
+				continue
+			}
+
+			id := b.X + b.Y*baSize.X + b.Z*baSize.X*baSize.Y	
+			block := &s.blockArray[id]
+
+			if block.Mesh != nil {
+				block.Mesh.Destroy()
+			}
+			block.Mesh = update.Mesh
+			if block.Mesh != nil {
+				block.Mesh.CopyArraysToVBO()
+			}
+			block.State = VBM_OK
+		default:
+			return
+		}
 	}
 }
 
 func (s *VoxelsRenderer) Render(camera *glutils.Camera,
 	program *glutils.ShaderProgram, bindfunc func(prog *glutils.ShaderProgram)) {
+
+	s.Process()
 
 	for id, _ := range s.blockArray {
 		block := &s.blockArray[id]

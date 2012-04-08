@@ -39,3 +39,26 @@ func DrawGround(store VoxelField, level int) {
 
 	store.AddValue(sizeCube.Start, sizeCube.End, op)
 }
+
+
+func DrawWave(store VoxelField) {
+	sizeCube := store.Size()
+	
+	op := func (ix,iy,iz int) int {
+		
+		level := math.Sin(float64(ix) * 0.08) * 5 + math.Cos(float64(iz) * 0.05) * 5 - 16
+		
+		
+		dif := float64(iy) - level
+		if dif < 0 {
+			if dif < -5 {
+				return 255
+			} else {
+				return int(255*(-dif/5))
+			}
+		}
+		return 0
+	}
+
+	store.AddValue(sizeCube.Start, sizeCube.End, op)
+}
