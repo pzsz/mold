@@ -3,6 +3,7 @@ package voxels
 import (
 	"math"
 	v "github.com/pzsz/lin3dmath"
+//	"fmt"
 )
 
 // Make mesh from 'cube' range inside voxel storage
@@ -165,5 +166,8 @@ func VertexNormalGradientInterp(cube *VoxelCube,a,b int) (v.Vector3f) {
 		return p1
 	}
 	mu = float32(ISOLEVEL - valp1) / float32(valp2 - valp1)
-	return p1.Add(p2.Sub(p1).Mul(mu)).Normalize()
+	ret := p1.Add(p2.Sub(p1).Mul(mu)).Normalize()
+
+	//fmt.Printf("%v %v = %v\n", p1, p2, ret)
+	return ret
 }

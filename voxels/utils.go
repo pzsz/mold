@@ -62,3 +62,22 @@ func DrawWave(store VoxelField) {
 
 	store.AddValue(sizeCube.Start, sizeCube.End, op)
 }
+
+func DrawPerlin(store VoxelField) {
+	sizeCube := store.Size()
+	perlin := v.NewPerlinNoise3D(545)
+
+	ysize := sizeCube.End.Y - sizeCube.Start.Y
+	
+	op := func (ix,iy,iz int) int {
+		val := perlin.At(0.1 + float64(ix)*0.05, 
+			0.1 + float64(iy)*0.05, 
+			0.1 + float64(iz)*0.05)
+		val = (val + 1) * 0.5
+
+		base := float64(sizeCube.End.Y - iy) / float64(ysize)
+		return int(base*80 + val*130)
+	}
+
+	store.AddValue(sizeCube.Start, sizeCube.End, op)
+}

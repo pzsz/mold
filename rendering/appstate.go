@@ -6,25 +6,22 @@ import (
 	"github.com/pzsz/glutils"
 	v "github.com/pzsz/lin3dmath"
 	"github.com/pzsz/marchingcubes/voxels"
+	"github.com/pzsz/marchingcubes/state"
 	"fmt"
 )
 
 type MCPlayAppState struct {
-	Manager   *glutils.AppStateManager
-	Camera    *glutils.Camera
-	Controller *glutils.FpsController
-	Voxels    voxels.VoxelField
-	Renderer  *VoxelsRenderer
+	Manager       *glutils.AppStateManager
+	moveDir       v.Vector3f
 
-	shader    *glutils.ShaderProgram
-	bindFunc  func(prog *glutils.ShaderProgram)
+	frameStats    glutils.FrameStats
 
-	pos       v.Vector3f
-	moveDir   v.Vector3f
-
-	lastX, lastY  float32    
-
-	frameStats glutils.FrameStats
+	gameState       *state.GameState
+	Camera          *glutils.Camera
+	Controller      *glutils.FpsController
+	VoxelsRenderer  *VoxelsRenderer
+	shader          *glutils.ShaderProgram
+	bindFunc        func(prog *glutils.ShaderProgram)
 }
 
 func NewMCPlayAppState() *MCPlayAppState {
@@ -35,16 +32,12 @@ func (self *MCPlayAppState) Setup(manager *glutils.AppStateManager) {
 	self.Manager = manager
 
 	self.Camera = glutils.NewCamera(glutils.GetViewport())
+	self.Camera.SetFrustrumProjection(60, 0.1, 200)
 
 	self.Controller = glutils.NewFpsController(self.Camera)
 	self.Controller.Pos = v.Vector3f{0, 0, -30}
-	self.Camera.SetFrustrumProjection(60, 0.1, 100)
 
-	storage := voxels.NewDamageWrapper(voxels.CreateArrayVoxelField(
-		1024, 128, 1024,
-		-512, -64, -512), nil)
-
-	self.Voxels = storage
+	self.gameState = state.NewGameState()
 
 	var err error
 	if self.shader, err = glutils.GetProgram(
@@ -52,26 +45,23 @@ func (self *MCPlayAppState) Setup(manager *glutils.AppStateManager) {
 		"shaders/blob.fragment"); err != nil {
 		panic(err.Error())
 	}
-
 	self.bindFunc = func(prog *glutils.ShaderProgram) {
-		prog.GetUniform("light0_direction").Uniform3f(1, -1, -1)
+		prog.GetUniform("light0_direction").Uniform3f(0, -1, 0)
 	}
 
-	self.Renderer = NewVoxelsRenderer(storage,
+	self.VoxelsRenderer = NewVoxelsRenderer(
+		self.gameState.VoxelField,
 		VoxelsRendererConfig{
 	            BlockArraySize: v.Vector3i{32,8,32},
-                    BlockSize: v.Vector3i{8,8,8},
+                    BlockSize: v.Vector3i{8,32,8},
 	})
 
-	voxels.DrawWave(storage)
+	voxels.DrawPerlin(self.gameState.VoxelField)
+	voxels.DrawSphere(self.gameState.VoxelField, 0, 0, 0, 6, 250)
+	voxels.DrawSphere(self.gameState.VoxelField, 10, 0, 0, 6, 250)
+	self.VoxelsRenderer.RefreshMesh()
 
-	voxels.DrawSphere(storage, 0, 0, 0, 6, 250)
-
-	voxels.DrawSphere(storage, 10, 0, 0, 6, 250)
-
-	self.Renderer.RefreshMesh()
-
-	sdl.ShowCursor(0)
+	sdl.ShowCursor(1)
 }
 
 func (self *MCPlayAppState) OnViewportResize(x, y float32) {
@@ -93,14 +83,18 @@ func (self *MCPlayAppState) Resume() {
 func (self *MCPlayAppState) Process(time_step float32) {
 	glutils.Clear()
 
-	self.Controller.MoveBy(self.moveDir.Y * time_step, 
+	self.Controller.MoveBy(
+		self.moveDir.Y * time_step, 
 		self.moveDir.X * time_step)
 
-	self.Renderer.SetCenter(self.Controller.Pos)
+	self.Controller.Pos.Y += self.moveDir.Z * time_step
 
 	self.Controller.SetupCamera()
 
-	self.Renderer.Render(self.Camera, 
+	self.VoxelsRenderer.SetCenter(
+		self.Controller.Pos)
+
+	self.VoxelsRenderer.Render(self.Camera, 
 		self.shader,
 		self.bindFunc)
 
@@ -125,52 +119,41 @@ func (self *MCPlayAppState) OnKeyDown(key *sdl.Keysym) {
 	case sdl.K_d:
 		self.moveDir.X = 10
 		break
+	case sdl.K_q:
+		self.moveDir.Z = 10
+		break
+	case sdl.K_e:
+		self.moveDir.Z = -10
+		break
+
 	}
 }
 
 func (self *MCPlayAppState) OnKeyUp(key *sdl.Keysym) {
-	switch(key.Sym) {
-	case sdl.K_w:
+	switch e := key.Sym; {
+	case e == sdl.K_w || e == sdl.K_s:
 		self.moveDir.Y = 0
 		break
-	case sdl.K_s:
-		self.moveDir.Y = 0
-		break
-	case sdl.K_a:
+	case e == sdl.K_a || e == sdl.K_d:
 		self.moveDir.X = 0
 		break
-	case sdl.K_d:
-		self.moveDir.X = 0
+	case e == sdl.K_q || e == sdl.K_e:
+		self.moveDir.Z = 0
 		break
 	}
 }
 
-func (self *MCPlayAppState) OnMouseMove(x, y float32) {	
-	dx := self.lastX - x 
-	dy := self.lastY - y
-
-	if dx < 50 && dx > -50 && dy < 50 && dy > -50 {
-		self.Controller.RotateBy(dx * -0.005, dy * -0.005)
-	}
-
-	self.lastX = x 
-	self.lastY = y
-
+func (self *MCPlayAppState) OnMouseMove(x, y, dx, dy float32) {	
+	self.Controller.RotateBy(dx * -0.005, dy * -0.005)
 }
 
 func (self *MCPlayAppState) OnMouseClick(x, y float32, button int, down bool) {
-//	mpos := self.Camera.ScreenToSphere(x,y, 10)
-	//mpos := self.Camera.ScreenToPlaneXY(x, y, 0)
 	vvector := self.Controller.GetViewVector().Mul(10)
 	mpos := self.Controller.Pos.Add(vvector)
 
-	fmt.Printf("%v %v\n", mpos, vvector)
-
-//	voxels.DrawSphere(self.Voxels, mpos.X, mpos.Y, 0, 6, 100)
-	voxels.DrawSphere(self.Voxels, mpos.X, mpos.Y, mpos.Z, 4, 100)
+	voxels.DrawSphere(self.gameState.VoxelField, mpos.X, mpos.Y, mpos.Z, 4, 100)
 	
-	//voxels.DrawSphere(self.Voxels, 0, 0, 0, 6, 100)
-	self.Renderer.RefreshMesh()
+	self.VoxelsRenderer.RefreshMesh()
 }
 
 func (self *MCPlayAppState) OnSdlEvent(event *sdl.Event) {

@@ -43,7 +43,8 @@ type VoxelsRenderer struct {
 
 	config        VoxelsRendererConfig
 	
-	updateChannel chan VBMUpdate
+	vbmUpdateChannel chan VBMUpdate
+	baUpdateChannel chan []VoxelsBlockMesh
 }
 
 func NewVoxelsRenderer(voxelField *voxels.DamageWrapper, config VoxelsRendererConfig) *VoxelsRenderer {
@@ -51,7 +52,8 @@ func NewVoxelsRenderer(voxelField *voxels.DamageWrapper, config VoxelsRendererCo
 	voxelField: voxelField,
         config: config,
 	renderSize: config.BlockArraySize.Mul3I(config.BlockSize),
-	updateChannel: make(chan VBMUpdate, 100),
+	vbmUpdateChannel: make(chan VBMUpdate, 100),
+	baUpdateChannel: make(chan []VoxelsBlockMesh, 5),
 	}
 
 	ret.voxelField.DamageFunc = func(b v.Boxi) {
@@ -207,13 +209,13 @@ func (s *VoxelsRenderer) RefreshMesh() {
 					mesh_builder)
 
 				if !mesh_builder.IsEmpty() {
-					s.updateChannel <- VBMUpdate{
+					s.vbmUpdateChannel <- VBMUpdate{
 						blockArrayGeneration,
 						mesh_builder.Finalize(false),
 						block.Position}
 				} else {
 					mesh.Destroy()
-					s.updateChannel <- VBMUpdate{
+					s.vbmUpdateChannel <- VBMUpdate{
 						blockArrayGeneration,
 						nil,
 						block.Position}
@@ -229,7 +231,7 @@ func (s *VoxelsRenderer) Process() {
 	baSize := s.config.BlockArraySize
 	for {
 		select {
-		case update := <-s.updateChannel:
+		case update := <-s.vbmUpdateChannel:
 			b := update.WorldPos.Div3I(s.config.BlockSize).Sub(s.blockStart)
 
 			if b.X < 0 || b.X >= baSize.X ||

@@ -27,7 +27,7 @@ func GetVoxelGradient(storage VoxelField, pos v.Vector3i) (ret v.Vector3f) {
 	zl := float32(storage.GetValue(pos.X, pos.Y, pos.Z-1))
 	zr := float32(storage.GetValue(pos.X, pos.Y, pos.Z+1))
 
-	return v.Vector3f{xr - xl/2.0, yr - yl/2.0, zr - zl/2.0}
+	return v.Vector3f{(xr - xl)/2.0, (yr - yl)/2.0, (zr - zl)/2.0}
 }
 
 // Useful abstraction over 8 Voxels formed into cube
@@ -43,7 +43,6 @@ type VoxelCube struct {
 	VoxelField VoxelField
 	Pos        v.Vector3i
 }
-
 // Get Position of given voxel
 func (self *VoxelCube) GetPosition(id int) v.Vector3i {
 	switch id {
