@@ -17,6 +17,7 @@ type MCPlayAppState struct {
 	frameStats    glutils.FrameStats
 
 	gameState       *state.GameState
+
 	Camera          *glutils.Camera
 	Controller      *glutils.FpsController
 	VoxelsRenderer  *VoxelsRenderer
@@ -52,14 +53,16 @@ func (self *MCPlayAppState) Setup(manager *glutils.AppStateManager) {
 	self.VoxelsRenderer = NewVoxelsRenderer(
 		self.gameState.VoxelField,
 		VoxelsRendererConfig{
-	            BlockArraySize: v.Vector3i{32,8,32},
-                    BlockSize: v.Vector3i{8,32,8},
+	            BlockArraySize: v.Vector3i{6,6,6},
+                    BlockSize: v.Vector3i{8,8,8},
 	})
 
 	voxels.DrawPerlin(self.gameState.VoxelField)
 	voxels.DrawSphere(self.gameState.VoxelField, 0, 0, 0, 6, 250)
 	voxels.DrawSphere(self.gameState.VoxelField, 10, 0, 0, 6, 250)
 	self.VoxelsRenderer.RefreshMesh()
+
+	self.gameState.CreatePlayer()
 
 	sdl.ShowCursor(1)
 }
@@ -83,11 +86,12 @@ func (self *MCPlayAppState) Resume() {
 func (self *MCPlayAppState) Process(time_step float32) {
 	glutils.Clear()
 
-	self.Controller.MoveBy(
-		self.moveDir.Y * time_step, 
-		self.moveDir.X * time_step)
+	self.gameState.UpdatePlayerCtrl(
+		self.moveDir, v.Angle(self.Controller.HorAxis))
 
-	self.Controller.Pos.Y += self.moveDir.Z * time_step
+	self.gameState.ObjectManager.Process(time_step)
+
+	self.Controller.Pos = self.gameState.Player.Position
 
 	self.Controller.SetupCamera()
 
@@ -108,10 +112,10 @@ func (self *MCPlayAppState) Process(time_step float32) {
 func (self *MCPlayAppState) OnKeyDown(key *sdl.Keysym) {
 	switch(key.Sym) {
 	case sdl.K_w:
-		self.moveDir.Y = 10
+		self.moveDir.Z = -10
 		break;
 	case sdl.K_s:
-		self.moveDir.Y = -10
+		self.moveDir.Z = 10
 		break
 	case sdl.K_a:
 		self.moveDir.X = -10
@@ -120,10 +124,10 @@ func (self *MCPlayAppState) OnKeyDown(key *sdl.Keysym) {
 		self.moveDir.X = 10
 		break
 	case sdl.K_q:
-		self.moveDir.Z = 10
+		self.moveDir.Y = 10
 		break
 	case sdl.K_e:
-		self.moveDir.Z = -10
+		self.moveDir.Y = -10
 		break
 
 	}
@@ -132,19 +136,19 @@ func (self *MCPlayAppState) OnKeyDown(key *sdl.Keysym) {
 func (self *MCPlayAppState) OnKeyUp(key *sdl.Keysym) {
 	switch e := key.Sym; {
 	case e == sdl.K_w || e == sdl.K_s:
-		self.moveDir.Y = 0
+		self.moveDir.Z = 0
 		break
 	case e == sdl.K_a || e == sdl.K_d:
 		self.moveDir.X = 0
 		break
 	case e == sdl.K_q || e == sdl.K_e:
-		self.moveDir.Z = 0
+		self.moveDir.Y = 0
 		break
 	}
 }
 
 func (self *MCPlayAppState) OnMouseMove(x, y, dx, dy float32) {	
-	self.Controller.RotateBy(dx * -0.005, dy * -0.005)
+	self.Controller.RotateBy(dx * 0.005, dy * 0.005)
 }
 
 func (self *MCPlayAppState) OnMouseClick(x, y float32, button int, down bool) {

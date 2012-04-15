@@ -26,7 +26,7 @@ type WDestroyableModule interface {
 type WObject struct {
 	Id         int32
 	Position   v.Vector3f
-	Rotation   v.Degree
+	Rotation   v.Quaternion
 	LookVector v.Vector3f
 	Size       float32
 	Alive      bool
@@ -96,12 +96,6 @@ func (self *WObject) attachRenderer(renderer WModuleRenderer) {
 	self.RendererModule = renderer
 	self.Modules = append(self.Modules, renderer)
 	renderer.Setup(self)
-}
-
-func (self *WObject) GetAngleVector() (ret v.Vector3f) {
-	ret.X = self.Rotation.X()
-	ret.Y = self.Rotation.Y()
-	return
 }
 
 /** Called by WObjectManager after finding out that object died */

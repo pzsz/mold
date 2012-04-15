@@ -3,27 +3,22 @@ package wobject
 import (
 	"container/list"
 	v "github.com/pzsz/lin3dmath"
+	"github.com/pzsz/marchingcubes/voxels"
 )
-
-type IWObjectWorld interface {
-	GetWorldSizeF() (float32, float32)
-	GetWorldSizeI() (int, int)
-}
 
 type WObjectManager struct {
 	Objects          *list.List	
 	id_gen           int32
 	RendererFactory  WModuleRendererFactory
 	DataField        interface{}
+	VoxelField       voxels.VoxelField
 }
 
-func NewWObjectManager(DataField interface{}) (*WObjectManager) {
+func NewWObjectManager() (*WObjectManager) {
 //	buckets := NewWObjectBuckets()
 
 	return &WObjectManager{ 
-	Objects: list.New(),
-//	Buckets : buckets,
-	DataField: DataField}
+	Objects: list.New()}
 }
 
 /* Register new object */
@@ -84,17 +79,6 @@ func (self *WObjectManager) Process(time_step float32) {
 			e = e.Next() 
 		}
 	}
-}
-
-func (self *WObjectManager) NormalizePosition(p v.Vector2f) v.Vector2f {
-	if p.X < 0 {p.X = 0}
-	if p.Y < 0 {p.Y = 0}
-
-	/*w,h := self.GetWorldSizeF()
-	if p.X >= w {p.X = w - 0.01}
-	if p.Y >= h {p.Y = h - 0.01}*/
-
-	return p
 }
 
 func (self *WObjectManager) DestroyAllObjects() {

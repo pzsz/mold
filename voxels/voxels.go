@@ -96,7 +96,20 @@ func (self *VoxelCube) GetGradient(id int) v.Vector3f {
 	return GetVoxelGradient(self.VoxelField, pos)
 }
 
-func (s *VoxelCube) Interpolate(x, y, z float32) int {
+func (s *VoxelCube) InterpolateValue(x, y, z float32) int {
+	bottom := float32(s.GetValue(0))*(1-x)*(1-y) +
+		float32(s.GetValue(1))*(x)*(1-y) +
+		float32(s.GetValue(2))*(x)*(y) +
+		float32(s.GetValue(3))*(1-x)*(y)
+
+	top := float32(s.GetValue(4))*(1-x)*(1-y) +
+		float32(s.GetValue(5))*(x)*(1-y) +
+		float32(s.GetValue(6))*(x)*(y) +
+		float32(s.GetValue(7))*(1-x)*(y)
+	return int(bottom*z + top*(1-z))
+}
+
+func (s *VoxelCube) InterpolateGradient(x, y, z float32) int {
 	bottom := float32(s.GetValue(0))*(1-x)*(1-y) +
 		float32(s.GetValue(1))*(x)*(1-y) +
 		float32(s.GetValue(2))*(x)*(y) +
