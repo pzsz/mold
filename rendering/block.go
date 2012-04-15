@@ -3,7 +3,7 @@ package rendering
 import (
 	"github.com/pzsz/glutils"
 	v "github.com/pzsz/lin3dmath"
-	"github.com/pzsz/marchingcubes/voxels"
+	"github.com/pzsz/mold/voxels"
 	"fmt"
 	)
 

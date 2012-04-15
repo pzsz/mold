@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/pzsz/glutils"
-	"github.com/pzsz/marchingcubes/rendering"
+	"github.com/pzsz/mold/rendering"
 	"runtime"
 )
 

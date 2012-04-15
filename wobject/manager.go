@@ -3,7 +3,7 @@ package wobject
 import (
 	"container/list"
 	v "github.com/pzsz/lin3dmath"
-	"github.com/pzsz/marchingcubes/voxels"
+	"github.com/pzsz/mold/voxels"
 )
 
 type WObjectManager struct {

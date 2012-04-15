@@ -1,8 +1,8 @@
 package state
 
 import (
-	"github.com/pzsz/marchingcubes/voxels"
-	"github.com/pzsz/marchingcubes/wobject"
+	"github.com/pzsz/mold/voxels"
+	"github.com/pzsz/mold/wobject"
 	v "github.com/pzsz/lin3dmath"
 	)
 

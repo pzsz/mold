@@ -5,8 +5,8 @@ import (
 	"github.com/banthar/Go-SDL/sdl"
 	"github.com/pzsz/glutils"
 	v "github.com/pzsz/lin3dmath"
-	"github.com/pzsz/marchingcubes/voxels"
-	"github.com/pzsz/marchingcubes/state"
+	"github.com/pzsz/mold/voxels"
+	"github.com/pzsz/mold/state"
 	"fmt"
 )
 
