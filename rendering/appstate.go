@@ -53,7 +53,7 @@ func (self *MCPlayAppState) Setup(manager *glutils.AppStateManager) {
 	self.VoxelsRenderer = NewVoxelsRenderer(
 		self.gameState.VoxelField,
 		VoxelsRendererConfig{
-	            BlockArraySize: v.Vector3i{6,6,6},
+	            BlockArraySize: v.Vector3i{16,16,16},
                     BlockSize: v.Vector3i{8,8,8},
 	})
 

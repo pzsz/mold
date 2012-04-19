@@ -1,0 +1,4 @@
+mold
+libbb.a
+*.o
+
