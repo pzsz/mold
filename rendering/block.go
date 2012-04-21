@@ -191,16 +191,9 @@ func (s *VoxelsRenderer) RefreshMesh() {
 
 		switch block.State {
 		case VBM_DIRTY:
-			mesh := block.Mesh 
-			block.Mesh = nil
-
-			if mesh == nil {
-				mesh = glutils.NewMeshBuffer(
-					0, 0, glutils.RENDER_POLYGONS, glutils.BUF_NORMAL)
-			}
 
 			go func() {
-				mesh_builder := glutils.ReuseMeshBuilder(mesh)
+				mesh_builder := glutils.NewMeshBuilder()
 
 				voxels.BuildMeshRange(
 					s.voxelField, 
@@ -209,12 +202,17 @@ func (s *VoxelsRenderer) RefreshMesh() {
 					mesh_builder)
 
 				if !mesh_builder.IsEmpty() {
+
+					mesh := glutils.NewMeshBuffer(
+						0, 0, glutils.RENDER_POLYGONS, 
+						glutils.BUF_NORMAL)
+
+					mesh_builder.Finalize(false, mesh)
 					s.vbmUpdateChannel <- VBMUpdate{
 						blockArrayGeneration,
-						mesh_builder.Finalize(false),
+						mesh,
 						block.Position}
 				} else {
-					mesh.Destroy()
 					s.vbmUpdateChannel <- VBMUpdate{
 						blockArrayGeneration,
 						nil,
