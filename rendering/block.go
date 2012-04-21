@@ -10,9 +10,10 @@ import (
 type VBMState int
 
 const (
-	VBM_DIRTY    = VBMState(0)
-	VBM_BUILDING = VBMState(1)
-	VBM_OK       = VBMState(2)
+	VBM_DIRTY      = VBMState(0)
+	VBM_BUILDING   = VBMState(1)
+	VBM_OK         = VBMState(2)
+	VBM_DESTROYED  = VBMState(3)
 )
 
 type VoxelsBlockMesh struct {
@@ -116,11 +117,9 @@ func (s *VoxelsRenderer) SetCenter(pos v.Vector3f) {
 
 	if newBlockStart != s.blockStart {
 		dif := newBlockStart.Sub(s.blockStart)
+		fmt.Printf("New translate start %v -> %v, dif %v\n", s.blockStart, newBlockStart, dif)
 		s.translateBlockArray(dif.X, dif.Y, dif.Z)
-		s.blockStart = newBlockStart
 		s.RefreshMesh()
-
-		fmt.Printf("New translate start %v, dif %v\n", s.blockStart, dif)
 	}
 }
 
@@ -178,9 +177,78 @@ func (s *VoxelsRenderer) translateBlockArray(tx, ty, tz int) {
 		}	
 	}	
 
+	if tx != 0 {
+		rmx_start := 0
+		rmx_end := 0
+		if tx > 0 {
+			rmx_start = 0
+			rmx_end = tx
+		} else if tx < 0 { 
+			rmx_start = size.X + tx
+			rmx_end = size.X		
+		}
+		destroyMeshes(rmx_start, rmx_end, 
+			0, size.Y, 
+			0, size.Z, 
+			s.blockArray, size)
+	}
+
+	if ty != 0 {
+		rmy_start := 0
+		rmy_end := 0
+		if ty > 0 {
+			rmy_start = 0
+			rmy_end = ty
+		} else if tx < 0 { 
+			rmy_start = size.Y + ty
+			rmy_end = size.Y
+		}
+		destroyMeshes(0, size.X,
+			rmy_start, rmy_end, 
+			0, size.Z, 
+			s.blockArray, size)
+	}
+
+	if tz != 0 {
+		rmz_start := 0
+		rmz_end := 0
+		if tz > 0 {
+			rmz_start = 0
+			rmz_end = tz
+		} else if tx < 0 { 
+			rmz_start = size.Z + tz
+			rmz_end = size.Z
+		}
+		destroyMeshes(0, size.X,
+			0, size.Y, 
+			rmz_start, rmz_end, 
+			s.blockArray, size)
+	}
+
+
 	s.blockArray = newBlockArray
 	s.blockArrayGen+=1
 }
+
+func destroyMeshes(sx,ex, sy,ey, sz,ez int, array []VoxelsBlockMesh, size v.Vector3i) {
+	fmt.Printf("Destroing X %v-%v Y %v-%v Z %v-%v\n",sx,ex,sy,ey,sz,ez)
+	for x:=sx; x<ex; x++ {
+		for z:=sz; z<ez; z++ {
+			for y:=sy; y<ey; y++ {
+				id := x + y*size.X + z*size.X*size.Y
+				blck := &array[id]
+				if (blck.State == VBM_DIRTY || 
+				    blck.State == VBM_OK) && 
+			           array[id].Mesh != nil {
+					array[id].Mesh.Destroy()
+					array[id].Mesh = nil
+					array[id].State = VBM_DESTROYED
+				}
+			}
+		}
+	}
+ }
+
 
 // Regenerate meshes of block
 func (s *VoxelsRenderer) RefreshMesh() {
@@ -191,7 +259,6 @@ func (s *VoxelsRenderer) RefreshMesh() {
 
 		switch block.State {
 		case VBM_DIRTY:
-
 			go func() {
 				mesh_builder := glutils.NewMeshBuilder()
 
@@ -202,7 +269,6 @@ func (s *VoxelsRenderer) RefreshMesh() {
 					mesh_builder)
 
 				if !mesh_builder.IsEmpty() {
-
 					mesh := glutils.NewMeshBuffer(
 						0, 0, glutils.RENDER_POLYGONS, 
 						glutils.BUF_NORMAL)
