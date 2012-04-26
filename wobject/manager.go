@@ -6,11 +6,18 @@ import (
 	"github.com/pzsz/mold/voxels"
 )
 
+type WorldData interface{}
+
+type WModuleRendererFactory interface {
+	SetupManager(*WObjectManager)
+	CreateWObjectRenderer(*WObject) WModuleRenderer
+}
+
 type WObjectManager struct {
 	Objects          *list.List	
 	id_gen           int32
 	RendererFactory  WModuleRendererFactory
-	DataField        interface{}
+	DataField        WorldData
 	VoxelField       voxels.VoxelField
 }
 
@@ -65,6 +72,12 @@ func (self *WObjectManager) SetRenderer(RendererFactory WModuleRendererFactory) 
 	}
 }
 
+func (self *WObjectManager) ForAllObjects(fu func(*WObject)) {
+	for e := self.Objects.Front(); e != nil; e = e.Next() {
+		fu(e.Value.(*WObject))
+	}
+}
+
 func (self *WObjectManager) Process(time_step float32) {
 	for e := self.Objects.Front(); e != nil; {
 		var object *WObject = e.Value.(*WObject)
@@ -76,7 +89,7 @@ func (self *WObjectManager) Process(time_step float32) {
 			self.Objects.Remove(e)
 			e = next_e
 		} else {
-			e = e.Next() 
+			 e = e.Next()
 		}
 	}
 }

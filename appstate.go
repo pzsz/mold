@@ -1,12 +1,12 @@
-package rendering
+package main
 
 import (
-	//	"github.com/pzsz/gl"
 	"github.com/banthar/Go-SDL/sdl"
 	"github.com/pzsz/glutils"
 	v "github.com/pzsz/lin3dmath"
 	"github.com/pzsz/mold/voxels"
 	"github.com/pzsz/mold/state"
+	"github.com/pzsz/mold/wobject"
 	"fmt"
 )
 
@@ -20,7 +20,7 @@ type MCPlayAppState struct {
 
 	Camera          *glutils.Camera
 	Controller      *glutils.FpsController
-	VoxelsRenderer  *VoxelsRenderer
+
 	shader          *glutils.ShaderProgram
 	bindFunc        func(prog *glutils.ShaderProgram)
 }
@@ -39,6 +39,8 @@ func (self *MCPlayAppState) Setup(manager *glutils.AppStateManager) {
 	self.Controller.Pos = v.Vector3f{0, 0, -30}
 
 	self.gameState = state.NewGameState()
+	
+	self.gameState.ObjectManager.SetRenderer(state.NewRenderContext(self.Camera))
 
 	var err error
 	if self.shader, err = glutils.GetProgram(
@@ -49,18 +51,6 @@ func (self *MCPlayAppState) Setup(manager *glutils.AppStateManager) {
 	self.bindFunc = func(prog *glutils.ShaderProgram) {
 		prog.GetUniform("light0_direction").Uniform3f(0, -1, 0)
 	}
-
-	self.VoxelsRenderer = NewVoxelsRenderer(
-		self.gameState.VoxelField,
-		VoxelsRendererConfig{
-	            BlockArraySize: v.Vector3i{16,16,16},
-                    BlockSize: v.Vector3i{8,8,8},
-	})
-
-	voxels.DrawPerlin(self.gameState.VoxelField)
-	voxels.DrawSphere(self.gameState.VoxelField, 0, 0, 0, 6, 250)
-	voxels.DrawSphere(self.gameState.VoxelField, 10, 0, 0, 6, 250)
-	self.VoxelsRenderer.RefreshMesh()
 
 	self.gameState.CreatePlayer()
 
@@ -86,21 +76,32 @@ func (self *MCPlayAppState) Resume() {
 func (self *MCPlayAppState) Process(time_step float32) {
 	glutils.Clear()
 
+	self.gameState.Physics.Process(time_step)
+
 	self.gameState.UpdatePlayerCtrl(
 		self.moveDir, v.Angle(self.Controller.HorAxis))
 
+
 	self.gameState.ObjectManager.Process(time_step)
+
 
 	self.Controller.Pos = self.gameState.Player.Position
 
 	self.Controller.SetupCamera()
 
-	self.VoxelsRenderer.SetCenter(
+	self.gameState.VoxelsMesh.SetCenter(
 		self.Controller.Pos)
 
-	self.VoxelsRenderer.Render(self.Camera, 
+	self.gameState.VoxelsMesh.Render(self.Camera, 
 		self.shader,
 		self.bindFunc)
+
+	self.gameState.ObjectManager.ForAllObjects(func(ob *wobject.WObject) {
+		if ob.RendererModule != nil {
+			ob.RendererModule.Render()
+		}
+	})
+
 
 	sdl.GL_SwapBuffers()
 
@@ -129,7 +130,10 @@ func (self *MCPlayAppState) OnKeyDown(key *sdl.Keysym) {
 	case sdl.K_e:
 		self.moveDir.Y = -10
 		break
-
+	case sdl.K_l:
+		ball := state.CreateBall(v.Vector3f{0,10,0})
+		self.gameState.ObjectManager.RegisterObject(ball,  v.Vector3f{0, 10, 0}, nil)
+		break;
 	}
 }
 
@@ -157,7 +161,7 @@ func (self *MCPlayAppState) OnMouseClick(x, y float32, button int, down bool) {
 
 	voxels.DrawSphere(self.gameState.VoxelField, mpos.X, mpos.Y, mpos.Z, 4, 100)
 	
-	self.VoxelsRenderer.RefreshMesh()
+	self.gameState.VoxelsMesh.RefreshMesh()
 }
 
 func (self *MCPlayAppState) OnSdlEvent(event *sdl.Event) {

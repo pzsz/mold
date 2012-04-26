@@ -16,6 +16,11 @@ struct _BB_StaticMesh {
   btBvhTriangleMeshShape     *shape;
 };
 
+struct _BB_RBody {
+  BB_World                   *world;
+  btRigidBody                *rigidBody;
+  btCollisionShape           *shape;
+};
 
 BB_World* BB_NewWorld() {
   BB_World* ret = new BB_World();
@@ -77,7 +82,6 @@ BB_StaticMesh* BB_NewStaticMesh(BB_World* world,
   mesh->mesh->addIndexedMesh(imesh, PHY_SHORT);
 
   mesh->shape = new btBvhTriangleMeshShape(mesh->mesh, true);
-
   mesh->collisionObject->setCollisionShape(mesh->shape);
 
   btTransform groundTransform;
@@ -91,5 +95,60 @@ BB_StaticMesh* BB_NewStaticMesh(BB_World* world,
 }
 
 void BB_DestroyStaticMesh(BB_StaticMesh* mesh) {
+  mesh->world->dynamicsWorld->removeCollisionObject(mesh->collisionObject);
+  delete mesh->collisionObject;
+  delete mesh->shape;
+  delete mesh->mesh;
+  delete mesh;
+}
 
+BB_RBody* BB_NewRBody(BB_World* world, 
+		      BB_CShape shape, 
+		      float mass, 
+		      BB_Vector3 pos) {
+
+  BB_RBody* ret = new BB_RBody();
+  ret->world = world;
+
+  btVector3 localInertia(0, 0, 0);
+
+  btCollisionShape *pShape = (btCollisionShape *)shape.ptr;
+  pShape->calculateLocalInertia(mass, localInertia);
+
+  btRigidBody::btRigidBodyConstructionInfo
+    rbInfo(mass, NULL, pShape, localInertia);
+
+  btTransform initialTransform;
+  initialTransform.setOrigin(btVector3(pos.x, pos.y, pos.z));
+
+  ret->rigidBody = new btRigidBody(rbInfo);
+  ret->rigidBody->setWorldTransform(initialTransform);
+  world->dynamicsWorld->addRigidBody(ret->rigidBody);
+
+  return ret;
+}
+
+ 
+BB_CShape BB_NewCShapeSphere(float radius) {
+  BB_CShape ret;
+  btCollisionShape *colShape = new btSphereShape(radius);
+  ret.ptr = colShape;
+  return ret;
+}
+
+void BB_DestroyRBody(BB_RBody* rbody) {
+
+}
+
+void BB_SetPositionRBody(BB_RBody* rbody, BB_Vector3 pos) {
+
+}
+
+BB_Vector3 BB_GetPositionRBody(BB_RBody* rbody) {
+  btVector3 pos = rbody->rigidBody->getCenterOfMassPosition();
+  BB_Vector3 ret;
+  ret.x = pos.x();
+  ret.y = pos.y();
+  ret.z = pos.z();
+  return ret;
 }

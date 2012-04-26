@@ -23,8 +23,14 @@ type WDestroyableModule interface {
 	Destroy()
 }
 
+type WModuleRenderer interface {
+	WModule
+	Render()
+}
+
 type WObject struct {
 	Id         int32
+	Name       string
 	Position   v.Vector3f
 	Rotation   v.Quaternion
 	LookVector v.Vector3f
@@ -125,8 +131,11 @@ func (self *WObject) Die() {
 	self.Alive = false
 }
 
-func NewWObject(modulesNum int, size float32) *WObject {
-	return &WObject{Size: size, Modules: make([]WModule, modulesNum)}
+func NewWObject(name string, modulesNum int, size float32) *WObject {
+	return &WObject{
+		Name:    name,
+		Size:    size,
+		Modules: make([]WModule, modulesNum)}
 }
 
 func (self *WObject) GetDistance2(other *WObject) (vec v.Vector3f, dist2 float32) {
@@ -152,3 +161,6 @@ func (self *WObject) SetPosition(x, y, z float32) {
 	self.Position = v.Vector3f{x, y, z}
 }
 
+func (self *WObject) SetPositionv3f(p v.Vector3f) {
+	self.Position = p
+}

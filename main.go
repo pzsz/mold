@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"github.com/pzsz/glutils"
-	"github.com/pzsz/mold/rendering"
 	"runtime"
 )
 
@@ -14,7 +13,7 @@ func main() {
 
 	appstatemanager := glutils.GetManager()
 
-	state := rendering.NewMCPlayAppState()
+	state := NewMCPlayAppState()
 
 	appstatemanager.Setup(state, "Marching cubes")
 	appstatemanager.RunLoop()

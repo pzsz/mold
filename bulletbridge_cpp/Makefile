@@ -8,18 +8,18 @@ OUT_SO = libbb.so
 INCLUDES = -I. -I/usr/local/include/bullet
 
 # C++ compiler flags (-g -O2 -Wall)
-CCFLAGS = -g -Wall
+CCFLAGS = -g -Wall -fPIC -m64
 
 # compiler
 CCC = g++
 
 # library paths
-LIBS = -L/usr/local/lib -lm -lbullet
+LIBS = -L/usr/local/lib -lm -lBulletSoftBody -lBulletDynamics -lBulletCollision -lLinearMath
 
 # compile flags
 LDFLAGS = -g
 
-default: $(OUT)
+default: $(OUT_SO)
 
 .cpp.o:
 	$(CCC) $(INCLUDES) $(CCFLAGS) -c $< -o $@
@@ -28,7 +28,7 @@ $(OUT): $(OBJ)
 	ar rcs $(OUT) $(OBJ)
 
 $(OUT_SO): $(OBJ)
-	$(CCC) $(CFLAGS) -fPIC -shared -o $@ $^
+	$(CCC) $(CFLAGS) $(LIBS) -fPIC -shared -o $@ $^
 
 clean:
-	rm -f $(OBJ) $(OUT) Makefile.bak 
+	rm -f $(OBJ) $(OUT) $(OUT_SO) Makefile.bak 
