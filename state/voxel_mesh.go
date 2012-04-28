@@ -32,9 +32,7 @@ func (s *VoxelsMeshBlock) SetMesh(Mesh *glutils.MeshBuffer, CollisionMesh *bulle
 	s.Mesh = Mesh
 	s.CollisionMesh = CollisionMesh
 	if s.Mesh != nil {
-		// Create VBO
 		s.Mesh.CopyArraysToVBO()
-		// Create collision
 	}
 }
 
@@ -47,6 +45,13 @@ func (s *VoxelsMeshBlock) Destroy() {
 		s.CollisionMesh.Destroy()
 		s.CollisionMesh = nil
 	}
+}
+
+type VMBArrayUpdate struct {
+	blockArray []VoxelsMeshBlock
+	blockStart    v.Vector3i
+	blockTranslate v.Vector3i
+	blockArrayGen int
 }
 
 type VMBUpdate struct {
@@ -71,7 +76,8 @@ type VoxelsMesh struct {
 	config VoxelsMeshConfig
 
 	vbmUpdateChannel chan VMBUpdate
-	baUpdateChannel  chan []VoxelsMeshBlock
+	baUpdateChannel  chan VMBArrayUpdate
+	baUpdating       bool
 
 	Physics *bulletbridge.BBWorld
 }
@@ -83,8 +89,8 @@ func NewVoxelsMesh(voxelField *voxels.DamageWrapper,
 		voxelField:       voxelField,
 		config:           config,
 		renderSize:       config.BlockArraySize.Mul3I(config.BlockSize),
-		vbmUpdateChannel: make(chan VMBUpdate, 100),
-		baUpdateChannel:  make(chan []VoxelsMeshBlock, 5),
+		vbmUpdateChannel: make(chan VMBUpdate, 256),
+		baUpdateChannel:  make(chan VMBArrayUpdate, 5),
 	        Physics:          Physics,
 	}
 
@@ -146,11 +152,10 @@ func (s *VoxelsMesh) SetCenter(pos v.Vector3f) {
 	units_half_size := s.config.BlockArraySize.Mul3I(s.config.BlockSize).DivI(2)
 	newBlockStart := pos.Sub(units_half_size.To3F()).To3I().Div3I(s.config.BlockSize)
 
-	if newBlockStart != s.blockStart {
+	if !s.baUpdating && newBlockStart != s.blockStart {
 		dif := newBlockStart.Sub(s.blockStart)
 		fmt.Printf("New translate start %v -> %v, dif %v\n", s.blockStart, newBlockStart, dif)
-		s.translateBlockArray(dif.X, dif.Y, dif.Z)
-		s.RefreshMesh()
+		s.translateBlockArray(dif)
 	}
 }
 
@@ -178,20 +183,18 @@ func (s *VoxelsMesh) initVMB(vbm *VoxelsMeshBlock, position v.Vector3i) {
 	vbm.State = VMB_DIRTY
 }
 
-func (s *VoxelsMesh) translateBlockArray(tx, ty, tz int) {
+func (s *VoxelsMesh) generateNewBlockArray(translate v.Vector3i) {
 	size := s.config.BlockArraySize
 	array_size := size.X * size.Y * size.Z
 
-	s.blockStart.X += tx
-	s.blockStart.Y += ty
-	s.blockStart.Z += tz
-
+	newBlockStart := s.blockStart.Add(translate)
 	newBlockArray := make([]VoxelsMeshBlock, array_size)
+	newBlockArrayGen := s.blockArrayGen+1
 	for z := 0; z < size.Z; z++ {
 		for y := 0; y < size.Y; y++ {
 			for x := 0; x < size.X; x++ {
 				id := x + y*size.X + z*size.X*size.Y
-				ox, oy, oz := x+tx, y+ty, z+tz
+				ox, oy, oz := x+translate.X, y+translate.Y, z+translate.Z
 				out_of_band := (ox < 0 || ox >= size.X ||
 					oy < 0 || oy >= size.Y ||
 					oz < 0 || oz >= size.Z)
@@ -200,13 +203,34 @@ func (s *VoxelsMesh) translateBlockArray(tx, ty, tz int) {
 					oid := ox + oy*size.X + oz*size.X*size.Y
 					newBlockArray[id] = s.blockArray[oid]
 				} else {
-					pos := s.blockStart.Mul3I(s.config.BlockSize)
+					pos := newBlockStart.Mul3I(s.config.BlockSize)
 					pos.AddIP(v.Vector3i{x, y, z}.Mul3I(s.config.BlockSize))
 					s.initVMB(&newBlockArray[id], pos)
 				}
 			}
 		}
 	}
+
+	s.baUpdateChannel <- VMBArrayUpdate{
+		blockArray: newBlockArray,
+		blockStart: newBlockStart,
+        	blockArrayGen: newBlockArrayGen,
+		blockTranslate: translate,
+	}
+}
+
+func (s *VoxelsMesh) translateBlockArray(translate v.Vector3i) {
+	s.baUpdating = true
+	go s.generateNewBlockArray(translate)
+}
+
+
+
+func (s *VoxelsMesh) updateVMBArray(update VMBArrayUpdate) {		
+	size := s.config.BlockArraySize
+	tx := update.blockTranslate.X
+	ty := update.blockTranslate.Y
+	tz := update.blockTranslate.Z
 
 	if tx != 0 {
 		rmx_start := 0
@@ -256,12 +280,14 @@ func (s *VoxelsMesh) translateBlockArray(tx, ty, tz int) {
 			s.blockArray, size)
 	}
 
-	s.blockArray = newBlockArray
-	s.blockArrayGen += 1
+	s.blockArray = update.blockArray
+	s.blockStart = update.blockStart
+	s.blockArrayGen = update.blockArrayGen
+	s.baUpdating = false
 }
 
 func destroyMeshes(sx, ex, sy, ey, sz, ez int, array []VoxelsMeshBlock, size v.Vector3i) {
-	fmt.Printf("Destroing X %v-%v Y %v-%v Z %v-%v\n", sx, ex, sy, ey, sz, ez)
+//	fmt.Printf("Destroing X %v-%v Y %v-%v Z %v-%v\n", sx, ex, sy, ey, sz, ez)
 	for x := sx; x < ex; x++ {
 		for z := sz; z < ez; z++ {
 			for y := sy; y < ey; y++ {
@@ -320,7 +346,27 @@ func (s *VoxelsMesh) RefreshMesh() {
 }
 
 func (s *VoxelsMesh) Process() {
+	breakoff := false
 	baSize := s.config.BlockArraySize
+	for {
+		select {
+		case update := <-s.baUpdateChannel:
+			s.updateVMBArray(update)
+			s.RefreshMesh()
+			break
+		default:
+			breakoff = true
+			break
+		}
+		if breakoff {
+			break
+		}
+	}
+
+	if s.baUpdating {
+		return
+	}
+
 	for {
 		select {
 		case update := <-s.vbmUpdateChannel:
@@ -340,7 +386,7 @@ func (s *VoxelsMesh) Process() {
 				collision_mesh := s.Physics.NewStaticMesh(
 					update.Mesh.CalcVertexSize(),
 					varray, iarray)
-				
+
 				block.SetMesh(update.Mesh, collision_mesh)
 			} else {
 				block.SetMesh(nil, nil)
@@ -350,6 +396,7 @@ func (s *VoxelsMesh) Process() {
 			return
 		}
 	}
+
 }
 
 func (s *VoxelsMesh) Render(camera *glutils.Camera,

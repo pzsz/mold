@@ -33,7 +33,7 @@ func NewGameState() *GameState {
 		state.VoxelField,
 		VoxelsMeshConfig{
 			BlockArraySize: v.Vector3i{16, 16, 16},
-			BlockSize:      v.Vector3i{8, 8, 8},
+			BlockSize:      v.Vector3i{8, 16, 8},
 		},
 		state.Physics)
 

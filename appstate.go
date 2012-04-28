@@ -159,7 +159,7 @@ func (self *MCPlayAppState) OnMouseClick(x, y float32, button int, down bool) {
 	vvector := self.Controller.GetViewVector().Mul(10)
 	mpos := self.Controller.Pos.Add(vvector)
 
-	voxels.DrawSphere(self.gameState.VoxelField, mpos.X, mpos.Y, mpos.Z, 4, 100)
+	voxels.DrawSphere(self.gameState.VoxelField, mpos.X, mpos.Y, mpos.Z, 2, 100)
 	
 	self.gameState.VoxelsMesh.RefreshMesh()
 }
