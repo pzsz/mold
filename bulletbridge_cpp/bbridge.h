@@ -16,6 +16,8 @@ extern "C" {
 
   typedef struct _BB_RBody BB_RBody;
 
+  typedef struct _BB_CharacterControler BB_CharacterControler;
+
   typedef struct _BB_CShape {
     void *ptr;
   }BB_CShape;
@@ -47,6 +49,15 @@ extern "C" {
   extern void BB_SetPositionRBody(BB_RBody* rbody, BB_Vector3 pos);
 
   extern BB_Vector3 BB_GetPositionRBody(BB_RBody* rbody);
+
+  extern BB_CharacterControler* BB_NewCharacterControler(BB_World* world, float height, float width, BB_Vector3 pos);
+
+  extern void BB_DestroyCharacterControler(BB_CharacterControler* character);
+
+  extern BB_Vector3 BB_GetPositionCharacterControler(BB_CharacterControler* characted);
+  extern void BB_SetWalkDirection(BB_CharacterControler* characted, BB_Vector3 walk);
+
+
 
 #ifdef __cplusplus
 }

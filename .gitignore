@@ -1,4 +1,5 @@
 mold
 libbb.a
+bulletbridge_cpp/libbb.so
 *.o
 

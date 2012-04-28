@@ -21,6 +21,10 @@ type BBRigidBody struct {
 	cptr *C.BB_RBody
 }
 
+type BBCharacterControler struct {
+	cptr *C.BB_CharacterControler
+}
+
 type BBCShape struct {
 	cobj C.BB_CShape
 }
@@ -84,4 +88,17 @@ func (s *BBWorld) NewRigidBody(shape BBCShape, mass float32, pos v.Vector3f) *BB
 
 func (s *BBRigidBody) GetPosition() v.Vector3f {
 	return fromCVector(C.BB_GetPositionRBody(s.cptr))
+}
+
+func (s *BBWorld) NewCharacterControler(width, height float32, pos v.Vector3f) *BBCharacterControler {	
+	ptr := C.BB_NewCharacterControler(s.cptr, C.float(height), C.float(width), toCVector(pos))
+	return &BBCharacterControler{ptr}
+}
+
+func (s *BBCharacterControler) GetPosition() v.Vector3f {
+	return fromCVector(C.BB_GetPositionCharacterControler(s.cptr))
+}
+
+func (s *BBCharacterControler) SetWalkDirection(walk v.Vector3f)  {
+	C.BB_SetWalkDirection(s.cptr, toCVector(walk))
 }

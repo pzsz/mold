@@ -26,7 +26,6 @@ func FindSimpleMoveWModule(Object *WObject) *SimpleMoveWModule {
 		}
 	}
 	return nil
-
 }
 
 func (self *SimpleMoveWModule) Setup(ob *WObject) {

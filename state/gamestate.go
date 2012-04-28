@@ -48,8 +48,11 @@ func GetGameState(manager *wobject.WObjectManager) *GameState {
 }
 
 func (s *GameState) UpdatePlayerCtrl(moveDir v.Vector3f, horAngle v.Angle) {
-	move := wobject.FindSimpleMoveWModule(s.Player)
-	move.Speed = moveDir
+//	move := wobject.FindSimpleMoveWModule(s.Player)
+//	move.Speed = moveDir
+
+	move := FindCharacterControlerWModule(s.Player)
+	move.Controler.SetWalkDirection(moveDir)
 
 	s.Player.Rotation = v.QuaternionFromAngle(
 		v.Vector3f{0, 1, 0},
@@ -59,7 +62,8 @@ func (s *GameState) UpdatePlayerCtrl(moveDir v.Vector3f, horAngle v.Angle) {
 
 func (s *GameState) CreatePlayer() {
 	wo := wobject.NewWObject("player", 2, 1)
-	wo.Modules[0] = wobject.NewSimpleMoveWModule()
+//	wo.Modules[0] = wobject.NewSimpleMoveWModule()
+	wo.Modules[0] = NewCharacterControlerWModule()
 	wo.Modules[1] = wobject.NewSimpleCollisionWModule()
 
 	s.Player = wo

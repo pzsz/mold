@@ -16,17 +16,6 @@ func NewPhysicsSphereWModule() *PhysicsSphereWModule {
 	return &PhysicsSphereWModule{}
 }
 
-func FindPhysicsSphereWModule(Object *wobject.WObject) *PhysicsSphereWModule {
-	for i := 0; i < len(Object.Modules); i++ {
-		cast, ok := Object.Modules[i].(*PhysicsSphereWModule)
-		if ok {
-			return cast
-		}
-	}
-	return nil
-
-}
-
 func (self *PhysicsSphereWModule) Setup(ob *wobject.WObject) {
 	self.Object = ob
 	state := GetGameState(self.Object.Manager)
@@ -48,4 +37,39 @@ func CreateBall(pos v.Vector3f) *wobject.WObject {
 	wo.Modules[0] = NewPhysicsSphereWModule()
 
 	return wo
+}
+
+type CharacterControlerWModule struct {
+	Object       *wobject.WObject
+	Controler    *bulletbridge.BBCharacterControler
+}
+
+func NewCharacterControlerWModule() *CharacterControlerWModule {
+	return &CharacterControlerWModule{}
+}
+
+
+func FindCharacterControlerWModule(Object *wobject.WObject) *CharacterControlerWModule {
+	for i := 0; i < len(Object.Modules); i++ {
+		cast, ok := Object.Modules[i].(*CharacterControlerWModule)
+		if ok {
+			return cast
+		}
+	}
+	return nil
+}
+
+
+func (self *CharacterControlerWModule) Setup(ob *wobject.WObject) {
+	self.Object = ob
+	state := GetGameState(self.Object.Manager)
+	self.Controler = state.Physics.NewCharacterControler(1, 3, self.Object.Position)
+}
+
+func (self *CharacterControlerWModule) InitNew() {
+
+}
+
+func (self *CharacterControlerWModule) Process(time_step float32) {
+	self.Object.SetPositionv3f(self.Controler.GetPosition())
 }

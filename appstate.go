@@ -33,7 +33,7 @@ func (self *MCPlayAppState) Setup(manager *glutils.AppStateManager) {
 	self.Manager = manager
 
 	self.Camera = glutils.NewCamera(glutils.GetViewport())
-	self.Camera.SetFrustrumProjection(60, 0.1, 200)
+	self.Camera.SetFrustrumProjection(60, 0.01, 200)
 
 	self.Controller = glutils.NewFpsController(self.Camera)
 	self.Controller.Pos = v.Vector3f{0, 0, -30}
@@ -79,7 +79,7 @@ func (self *MCPlayAppState) Process(time_step float32) {
 	self.gameState.Physics.Process(time_step)
 
 	self.gameState.UpdatePlayerCtrl(
-		self.moveDir, v.Angle(self.Controller.HorAxis))
+		self.moveDir.Mul(0.2), v.Angle(self.Controller.HorAxis))
 
 
 	self.gameState.ObjectManager.Process(time_step)
@@ -113,22 +113,22 @@ func (self *MCPlayAppState) Process(time_step float32) {
 func (self *MCPlayAppState) OnKeyDown(key *sdl.Keysym) {
 	switch(key.Sym) {
 	case sdl.K_w:
-		self.moveDir.Z = -10
+		self.moveDir.Z = -1
 		break;
 	case sdl.K_s:
-		self.moveDir.Z = 10
+		self.moveDir.Z = 1
 		break
 	case sdl.K_a:
-		self.moveDir.X = -10
+		self.moveDir.X = -1
 		break
 	case sdl.K_d:
-		self.moveDir.X = 10
+		self.moveDir.X = 1
 		break
 	case sdl.K_q:
-		self.moveDir.Y = 10
+		self.moveDir.Y = 1
 		break
 	case sdl.K_e:
-		self.moveDir.Y = -10
+		self.moveDir.Y = -1
 		break
 	case sdl.K_l:
 		ball := state.CreateBall(v.Vector3f{0,10,0})

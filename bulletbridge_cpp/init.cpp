@@ -1,5 +1,8 @@
 #include "bbridge.h"
 #include "btBulletDynamicsCommon.h"
+#include "BulletDynamics/Character/btKinematicCharacterController.h"
+#include "BulletCollision/CollisionDispatch/btGhostObject.h"
+
 
 struct _BB_World {
   btDiscreteDynamicsWorld          *dynamicsWorld;
@@ -22,6 +25,15 @@ struct _BB_RBody {
   btCollisionShape           *shape;
 };
 
+struct _BB_CharacterControler {
+  BB_World                       *world;
+  btKinematicCharacterController *character;
+  btPairCachingGhostObject       *ghostObject;
+  btConvexShape                  *shape;
+  btRigidBody                    *rigidBody;
+};
+
+
 BB_World* BB_NewWorld() {
   BB_World* ret = new BB_World();
 
@@ -40,6 +52,8 @@ BB_World* BB_NewWorld() {
 				ret->broadphase,
 				ret->solver, 
 				ret->collisionConfiguration);  
+
+  ret->broadphase->getOverlappingPairCache()->setInternalGhostPairCallback(new btGhostPairCallback());
   return ret;
 }
 
@@ -121,6 +135,7 @@ BB_RBody* BB_NewRBody(BB_World* world,
   btTransform initialTransform;
   initialTransform.setOrigin(btVector3(pos.x, pos.y, pos.z));
 
+  ret->shape = pShape;
   ret->rigidBody = new btRigidBody(rbInfo);
   ret->rigidBody->setWorldTransform(initialTransform);
   world->dynamicsWorld->addRigidBody(ret->rigidBody);
@@ -137,7 +152,10 @@ BB_CShape BB_NewCShapeSphere(float radius) {
 }
 
 void BB_DestroyRBody(BB_RBody* rbody) {
-
+  rbody->world->dynamicsWorld->removeRigidBody(rbody->rigidBody);  
+  delete rbody->rigidBody;
+  delete rbody->shape;
+  delete rbody;
 }
 
 void BB_SetPositionRBody(BB_RBody* rbody, BB_Vector3 pos) {
@@ -151,4 +169,52 @@ BB_Vector3 BB_GetPositionRBody(BB_RBody* rbody) {
   ret.y = pos.y();
   ret.z = pos.z();
   return ret;
+}
+
+BB_CharacterControler* BB_NewCharacterControler(BB_World* world, float height, 
+						float width, BB_Vector3 pos) {
+  BB_CharacterControler* ret = new BB_CharacterControler();
+  ret->world = world;
+
+  btTransform startTransform;
+  startTransform.setIdentity();
+  startTransform.setOrigin(btVector3(pos.x, pos.y, pos.z));
+
+  ret->shape = new btCapsuleShape(width, height);
+
+  ret->ghostObject = new btPairCachingGhostObject();
+  ret->ghostObject->setWorldTransform(startTransform);
+
+  ret->ghostObject->setCollisionShape(ret->shape);
+  ret->ghostObject->setCollisionFlags(btCollisionObject::CF_CHARACTER_OBJECT);
+
+  btScalar stepHeight = btScalar(0.1);
+  ret->character = new btKinematicCharacterController (ret->ghostObject, ret->shape, stepHeight);
+  ret->character->setFallSpeed(10);
+
+  ///only collide with static for now (no interaction with dynamic objects)
+  world->dynamicsWorld->addCollisionObject(ret->ghostObject, btBroadphaseProxy::CharacterFilter, btBroadphaseProxy::StaticFilter | btBroadphaseProxy::DefaultFilter);
+
+  world->dynamicsWorld->addAction(ret->character);
+
+  return ret;
+}
+
+void BB_DestroyCharacterControler(BB_CharacterControler* character) {
+
+}
+
+BB_Vector3 BB_GetPositionCharacterControler(BB_CharacterControler* character) {
+  btVector3 pos = character->ghostObject->getWorldTransform().getOrigin();
+  BB_Vector3 ret;
+  ret.x = pos.x();
+  ret.y = pos.y();
+  ret.z = pos.z();
+
+  return ret;
+
+}
+
+void BB_SetWalkDirection(BB_CharacterControler* character, BB_Vector3 walk) {
+  character->character->setWalkDirection(btVector3(walk.x, walk.y, walk.z));
 }
