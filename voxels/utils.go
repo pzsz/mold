@@ -70,13 +70,13 @@ func DrawPerlin(store VoxelField) {
 	ysize := sizeCube.End.Y - sizeCube.Start.Y
 	
 	op := func (ix,iy,iz int) int {
-		val := perlin.At(0.1 + float64(ix)*0.05, 
-			0.1 + float64(iy)*0.05, 
-			0.1 + float64(iz)*0.05)
+		val := perlin.At(0.1 + float64(ix)*0.1, 
+			0.1 + float64(iy)*0.1, 
+			0.1 + float64(iz)*0.1)
 		val = (val + 1) * 0.5
 
 		base := float64(sizeCube.End.Y - iy) / float64(ysize)
-		return int(base*80 + val*130)
+		return int(base*40 + val*200)
 	}
 
 	store.AddValue(sizeCube.Start, sizeCube.End, op)

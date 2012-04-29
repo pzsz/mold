@@ -81,7 +81,6 @@ func (self *MCPlayAppState) Process(time_step float32) {
 	self.gameState.UpdatePlayerCtrl(
 		self.moveDir.Mul(0.2), v.Angle(self.Controller.HorAxis))
 
-
 	self.gameState.ObjectManager.Process(time_step)
 
 
